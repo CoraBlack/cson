@@ -1,5 +1,14 @@
-use std::{env::current_dir, path::PathBuf};
+use std::{env::current_dir, path::PathBuf, sync::{LazyLock, Mutex}};
 
+static ARGS: LazyLock<Mutex<CliArgs>> = LazyLock::new(|| {
+    Mutex::new(CliArgs::new())
+});
+
+pub fn get_args() -> CliArgs {
+    ARGS.lock().unwrap().clone()
+}
+
+#[derive(Clone)]
 pub struct CliArgs {
     pub project_dir: PathBuf,
 }

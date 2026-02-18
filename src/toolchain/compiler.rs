@@ -12,9 +12,9 @@ pub struct CompilerPair {
 pub trait Compiler {
     fn get_compiler() -> CompilerPair;
 
-    fn compile(input: Vec<Source>) -> Option<Object>;
+    fn compile(src: Source) -> Object;
 }
 
-pub fn compile<T: Compiler>(input: Vec<Source>) -> Option<Object> {
-    T::compile(input)
+pub fn compile<T: Compiler>(src: Source) -> Object {
+    T::compile(src)
 }

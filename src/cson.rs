@@ -1,12 +1,12 @@
-use std::{error::Error, fs, path::{Path, PathBuf}, sync::{LazyLock, Mutex, RwLock}};
+use std::{fs, path::{Path, PathBuf}, sync::{LazyLock, RwLock}};
 
 use serde::{Deserialize, Serialize};
 
-use crate::cli::arg::CliArgs;
+use crate::cli::arg;
 
 static CONFIG: LazyLock<RwLock<CsonConfig>> = LazyLock::new(|| {
     RwLock::new({
-        let arg = CliArgs::new();
+        let arg = arg::get_args();
         let path = arg.project_dir;
 
         CsonConfig::new(path.as_path())
@@ -49,11 +49,29 @@ pub struct CsonConfig {
 
 impl CsonConfig {
     pub fn new(path: &Path) -> CsonConfig {
-        let cson = fs::read_to_string(path)
-            .expect(format!("Failed to read cson.json file from {}", path.to_str().unwrap()).as_str());
-        let cson = serde_json::from_str(&cson)
-            .expect("Failed to parse cson configration");
+        let file_path = if path.is_dir() {
+            path.join("cson.json")
+        } else {
+            path.to_path_buf()
+        };
+
+        let content = fs::read_to_string(&file_path).expect(
+            format!(
+                "Failed to read cson.json file from {}",
+                file_path.to_string_lossy()
+            )
+            .as_str(),
+        );
+
+        let cson: CsonConfig = serde_json::from_str(&content)
+            .expect("Failed to parse cson configuration");
 
         cson
     }
+}
+
+#[test]
+fn test_cson() {
+    let config = CsonConfig::new("./cson.json".as_ref());
+    println!("Project: {:?}", config);
 }

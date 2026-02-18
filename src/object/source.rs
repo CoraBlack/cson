@@ -2,7 +2,7 @@ use std::{path::{Path, PathBuf}, time::SystemTime};
 
 pub struct Source {
     src_dir: PathBuf,
-    modified: Option<SystemTime>
+    pub modified: Option<SystemTime>
 }
 
 impl Source {
@@ -23,14 +23,17 @@ impl Source {
             std::process::exit(-1);
         }
 
-        if extension != "c" || extension != "cpp" || 
-            extension != "cxx" || extension != "cc" ||
-            extension != "h" || extension != "hpp" ||
-            extension != "hh" || extension != "hxx" {
+        if extension == "c" || extension == "cpp" || 
+            extension == "cxx" || extension == "cc" ||
+            extension == "h" || extension == "hpp" ||
+            extension == "hh" || extension == "hxx" {
+            // Valid source file extension
+        } else {
             // TODO: Error
             eprintln!("Invalid source file {}", src_path.display());
             std::process::exit(-1);
         }
+        println!("extension: {}", extension);
 
         let mut src = Self { 
             src_dir: src_path.to_path_buf(), 
