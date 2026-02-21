@@ -1,7 +1,12 @@
 [package]
 name = "cxon"
+authors = ["Cora"]
 version = "0.1.0"
 edition = "2024"
+readme = "README.md"
+repository = "https://github.com/CoraBlack/cxon"
+description = "C++ builder configured with JSON"
+license-file = "LICENSE"
 
 [dependencies]
 pathdiff = "0.2.3"
