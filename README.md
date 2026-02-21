@@ -20,7 +20,7 @@ We want to provide a build system that is easy to use and config for C++ beginne
 We only require a small number of essential fields for cson.json and make the build system configration as simple as possible.
 
 ## cson.json Example
-```json
+```jsonc
 {
     "project": "HelloWorld",    // project name
     "target_name": "HelloWorld",// the final compiled product name
