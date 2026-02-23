@@ -8,8 +8,19 @@ repository = "https://github.com/CoraBlack/cxon"
 description = "C++ builder configured with JSON"
 license-file = "LICENSE"
 
+[package.metadata.wix]
+upgrade-guid = "11E0635E-8ADF-4DC6-B291-602D1DBE58A9"
+path-guid = "14F25E20-94D6-4848-BEEE-F5DEF5F074AF"
+license = false
+eula = false
+
 [dependencies]
 pathdiff = "0.2.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.149"
 which ={ version = "8"}
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
