@@ -8,7 +8,7 @@
 
 - [x] Build project with compiler and linker by cxon.json immediately.(unsupport custom)
 - [x] Build cache
-- [ ] Mult-thread build.
+- [x] Mult-thread build.
 - [ ] Submodule support.
 - [ ] Multiple compile targets.
 - [ ] Platform-specific configuration.
@@ -32,7 +32,7 @@ We only require a small number of essential fields for cxon.json and make the bu
     "cc": "",                   // (unsupport) custom c compiler
     "cxx": "",                  // (unsupport) custom c++ compiler
 
-    "threads": 4,               // (unsupport) count of build threads
+    "threads": 4,               // count of build threads, the default value is number of your cpu - 1
 
     "flags": [                  // parameters for c and c++ compiler
         "-Wall",

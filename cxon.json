@@ -26,8 +26,8 @@
     ],
 
     "sources": [
-        "./test/project/main.cpp",
-        "./test/project/func.cpp"
+        "test/project/main.cpp",
+        "test/project/func.cpp"
     ],
 
     "link": [

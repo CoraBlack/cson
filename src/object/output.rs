@@ -1,10 +1,12 @@
 use std::time::SystemTime;
 
+#[derive(Clone)]
 pub struct Object {
     pub path: std::path::PathBuf,
     pub modified: Option<SystemTime>,
 }
 
+#[derive(Clone)]
 pub struct ObjectCollection {
     pub objects: Vec<Object>,
 }

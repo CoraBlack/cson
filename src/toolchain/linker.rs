@@ -11,7 +11,7 @@ use crate::{cxon::get_cxon_config, object::output::ObjectCollection, toolchain::
 //     // fn link_to_dynamic_lib(input: ObjectCollection) -> Option<SharedLib>;
 // }
 
-pub fn link_to_execuable<T: ToolChainTrait>(input: ObjectCollection) -> () {
+pub fn link_to_executable<T: ToolChainTrait>(input: ObjectCollection) -> () {
     let linker = T::LINKER;
     let output_dir = &get_cxon_config().read().unwrap().output_dir;
 
