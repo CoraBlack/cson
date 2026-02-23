@@ -1,0 +1,28 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose
+
+    - name: "C/C++ toolchain install"
+      run: |
+        sudo apt update && sudo apt install base-essential
+
+    - name: "example build test"
+      run: |
+        cargo run ./example/hello_world
+        
