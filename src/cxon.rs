@@ -254,11 +254,11 @@ fn default_target_type() -> String {
 }
 
 fn default_build_dir() -> PathBuf {
-    PathBuf::from("./build").canonicalize().expect("Failed to canonicalize build directory")
+    PathBuf::from("./build")
 }
 
 fn default_output_dir() -> PathBuf {
-    PathBuf::from("./output").canonicalize().expect("Failed to canonicalize output directory")
+    PathBuf::from("./output")
 }
 
 #[test]

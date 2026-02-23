@@ -19,7 +19,7 @@ pub struct CompileFuncArgs {
 }
 
 pub fn compile<T: ToolChainTrait>(src: Source) -> Object {
-    let obj_path = get_object_target_path(&src).expect("Failed to get the target path of object file");
+    let obj_path = get_object_target_path::<T>(&src).expect("Failed to get the target path of object file");
 
     if !need_recompile(&src, &obj_path) {
         return Object { 
@@ -56,7 +56,7 @@ fn compile_handler<T: ToolChainTrait>(args: CompileFuncArgs) -> Object {
         .arg(T::DEBUG_FLAG)
         .arg(T::ONLY_COMPILE_FLAG)
         .arg(args.src_path.to_str().unwrap())
-        .arg(T::OUTPUT_FLAG)
+        .arg(T::EXECUTABLE_OUTPUT_FLAG)
         .arg(args.obj_path.to_str().unwrap())
         .args(args.includes)
         .args(args.defines)

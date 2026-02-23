@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, sync::{Arc, Mutex}, thread};
 
-use crate::{cxon::get_cxon_config, object::{output::ObjectCollection, source::Source}, toolchain::{ToolChain, ToolChainTrait, compiler, gnu::GNU, llvm::LLVM, msvc::MSVC}};
+use crate::{cxon::get_cxon_config, object::{output::ObjectCollection, source::Source}, toolchain::{ToolChain, ToolChainTrait, compiler, gnu::GNU, linker, llvm::LLVM, msvc::MSVC}};
 
 pub mod cli {
     pub mod arg;
@@ -14,7 +14,11 @@ pub mod utils;
 pub mod cxon;
 
 fn main() -> () {
-    let toolchain = get_cxon_config().read().unwrap().get_toolchain();
+    let toolchain = get_cxon_config()
+        .read()
+        .unwrap()
+        .get_toolchain();
+    
     match toolchain {
         ToolChain::GNU()  => build_project::<GNU>(),
         ToolChain::LLVM() => build_project::<LLVM>(),
@@ -63,5 +67,10 @@ fn build_project<T: ToolChainTrait>() {
         thread.join().unwrap();
     }
 
-    toolchain::linker::link_to_executable::<T>(objects.lock().unwrap().clone());
+    linker::link::<T>(objects.lock().unwrap().clone(), 
+        get_cxon_config()
+        .read()
+        .unwrap()
+        .get_target_type()
+    );
 }

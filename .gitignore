@@ -4,5 +4,8 @@
 /build/
 
 # example production files
-/example/hello_world/bin/
-/example/hello_world/build/
+/example/**/bin/
+/example/**/build/
+/example/**/output/
+/example/**/*.o
+/example/**/*.obj

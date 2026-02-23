@@ -3,17 +3,7 @@
     "target_type": "executable",
     "build_dir": "build",
     "output_dir": "bin",
-
     "toolchain": "gnu",
-
-    "flags": [
-    
-    ],
-
-    "cflags": [
-
-    ],
-
     "cxxflags": [
         "-std=c++11"
     ],
@@ -22,20 +12,8 @@
         "./include/"
     ],
 
-    "defines": [
-
-    ],
-
     "sources": [
         "./main.cpp",
         "./func.cpp"
-    ],
-
-    "link": [
-
-    ],
-
-    "libs": [
-
     ]
 }

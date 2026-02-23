@@ -26,7 +26,7 @@ impl CliArgs {
 
         let project_dir = PathBuf::from(arg_col[1].clone());
         if !project_dir.exists() {
-            Err(()).expect("cxon project dir is not available")
+            Err(()).expect(format!("cxon project dir is not available: {}", project_dir.display()).as_str())
         }
 
         // remove cxon.json if it's included in the path

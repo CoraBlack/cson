@@ -1,0 +1,9 @@
+{
+    "project": "my_shared_lib",
+    "toolchain": "llvm",
+    "target_type": "shared_lib",
+    
+    "sources": [
+        "./func.cpp"
+    ]
+}

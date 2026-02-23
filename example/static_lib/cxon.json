@@ -1,0 +1,9 @@
+{
+    "project": "my_static_lib",
+    "toolchain": "llvm",
+    "target_type": "static_lib",
+    
+    "sources": [
+        "./func.cpp"
+    ]
+}

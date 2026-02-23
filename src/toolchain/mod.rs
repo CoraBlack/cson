@@ -22,9 +22,23 @@ pub enum TargetType {
 pub trait ToolChainTrait {
     const CC:     &'static str;
     const CXX:    &'static str;
-    const LINKER: &'static str;
     const DEBUG_FLAG:  &'static str;
-    const OUTPUT_FLAG: &'static str;
+
+    const EXECUTABLE_LINKER: &'static str;
+    const STATIC_LIB_LINKER: &'static str;
+    const SHARED_LIB_LINKER: &'static str;
+    const OBJECT_LIB_LINKER: &'static str;
+
+    const EXECUTABLE_OUTPUT_FLAG: &'static str;
+    const STATIC_LIB_OUTPUT_FLAG: &'static str;
+    const SHARED_LIB_OUTPUT_FLAG: &'static str;
+    const OBJECT_LIB_OUTPUT_FLAG: &'static str;
+
+    const EXECUTABLE_EXTENSION: &'static str;
+    const STATIC_LIB_EXTENSION: &'static str;
+    const SHARED_LIB_EXTENSION: &'static str;
+    const OBJECT_LIB_EXTENSION: &'static str;
+
     const ONLY_COMPILE_FLAG:    &'static str;
     const DEFINE_FLAG_PREFIX:   &'static str;
     const INCLUDE_FLAG_PREFIX:  &'static str;
@@ -35,5 +49,8 @@ pub trait ToolChainTrait {
 pub fn check_toolchain_availability<T: ToolChainTrait>() -> () {
     utils::check_executable_exists(T::CC);
     utils::check_executable_exists(T::CXX);
-    utils::check_executable_exists(T::LINKER);
+    utils::check_executable_exists(T::EXECUTABLE_LINKER);
+    utils::check_executable_exists(T::STATIC_LIB_LINKER);
+    utils::check_executable_exists(T::SHARED_LIB_LINKER);
+    utils::check_executable_exists(T::OBJECT_LIB_LINKER);
 }
