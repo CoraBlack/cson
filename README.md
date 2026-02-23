@@ -19,7 +19,7 @@ cargo install cxon
 - [x] Build cache
 - [x] Mult-thread build.
 - [x] Muti-build-target.
-- [ ] cxon.json schema support 
+- [x] cxon.json schema support 
 - [ ] Debug field support(Only debug currently).
 - [ ] Submodule support.
 - [ ] Multiple compile targets.
@@ -33,6 +33,7 @@ We only require a small number of essential fields for cxon.json and make the bu
 ## cxon.json Example
 ```json5
 {
+    "$schema": "https://corablack.github.io/cxon_schema/cxon.schema.json", // the official cxon.json schema service
     "project": "HelloWorld",    // (Required) project name
     "target_name": "hello",     // the final compiled product name, the default value is the project field
     "target_type": "execuable", // (Required) build type (execuable, static_lib, shared_lib, object_lib)
