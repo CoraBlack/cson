@@ -39,7 +39,7 @@ We only require a small number of essential fields for cxon.json and make the bu
     "build_dir": "build",       // the directory storing intermediate compiled product
     "output_dir": "bin",        // the directory storing final compiled product
 
-    "toolchain": "gnu",         // (unsupport) gnu, llvm, msvc only currently
+    "toolchain": "gnu",         // gnu, llvm, msvc only currently
     "cc": "",                   // (unsupport) custom c compiler
     "cxx": "",                  // (unsupport) custom c++ compiler
 
