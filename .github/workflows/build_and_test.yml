@@ -20,7 +20,7 @@ jobs:
 
     - name: "C/C++ toolchain install"
       run: |
-        sudo apt update && sudo apt install base-essential
+        sudo apt update && sudo apt install build-essential
 
     - name: "example build test"
       run: |
