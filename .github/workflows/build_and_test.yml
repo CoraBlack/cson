@@ -11,21 +11,29 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
 
     steps:
     - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
 
-    - name: "C/C++ toolchain install"
+    - name: "C/C++ toolchain install (Linux)"
+      if: runner.os == 'Linux'
       run: |
         sudo apt update && sudo apt install build-essential tree
 
     - name: "example build test"
+      if: runner.os != 'Windows'
       run: |
         cargo run ./example/hello_world
         cargo run ./example/static_lib
         cargo run ./example/shared_lib
-        tree ./example/
-        
+
+    - name: "Show example directory tree"
+      if: runner.os == 'Linux'
+      run: tree ./example/
+
