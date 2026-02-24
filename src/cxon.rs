@@ -26,7 +26,10 @@ pub struct CxonConfig {
     // build settings
     target_name: Option<String>,
     #[serde(default = "default_target_type")]
-    target_type: String, // "executable", "static_lib", "shared_lib"
+    target_type: String, // "executable", "static_lib", "shared_lib", "object_lib"
+    #[serde(default = "default_export_compile_commands")]
+    pub export_compile_commands: bool,
+    pub export_compile_commands_path: Option<PathBuf>,
 
     // toolchain settings
     pub toolchain: String,
@@ -83,8 +86,8 @@ impl CxonConfig {
 
         // build target type check
         let target_type = cxon.target_type.clone().to_lowercase();
-        if !["executable", "static_lib", "shared_lib"].contains(&target_type.as_str()) {
-            panic!("Unsupported target type: {}. Supported target types are: executable, static_lib, shared_lib", cxon.target_type);
+        if !["executable", "static_lib", "shared_lib", "object_lib"].contains(&target_type.as_str()) {
+            panic!("Unsupported target type: {}. Supported target types are: executable, static_lib, shared_lib, object_lib", cxon.target_type);
         }
 
         // Source file check
@@ -129,6 +132,10 @@ impl CxonConfig {
         // Create build and output directories if they don't exist
         cxon.build_dir  = Self::init_dir(cxon.build_dir, true);
         cxon.output_dir = Self::init_dir(cxon.output_dir, true);
+
+        if let Some(export_path) = &cxon.export_compile_commands_path {
+            cxon.export_compile_commands_path = Some(Self::init_dir(export_path.clone(), true));
+        }
 
         if let Some(sources) = cxon.sources {
             cxon.sources = Some(Self::init_dirs(sources, false));
@@ -250,7 +257,7 @@ impl CxonConfig {
 }
 
 fn default_target_type() -> String {
-    "execuable".to_string()
+    "executable".to_string()
 }
 
 fn default_build_dir() -> PathBuf {
@@ -259,6 +266,10 @@ fn default_build_dir() -> PathBuf {
 
 fn default_output_dir() -> PathBuf {
     PathBuf::from("./output")
+}
+
+fn default_export_compile_commands() -> bool {
+    false
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, sync::{Arc, Mutex}, thread};
 
-use crate::{cxon::get_cxon_config, object::{output::ObjectCollection, source::Source}, toolchain::{ToolChain, ToolChainTrait, compiler, gnu::GNU, linker, llvm::LLVM, msvc::MSVC}};
+use crate::{compile_commands_json::generate_compile_commands_json, cxon::get_cxon_config, object::{output::ObjectCollection, source::Source}, toolchain::{ToolChain, ToolChainTrait, compiler, gnu::GNU, linker, llvm::LLVM, msvc::MSVC}};
 
 pub mod cli {
     pub mod arg;
@@ -12,6 +12,7 @@ pub mod object {
 pub mod toolchain;
 pub mod utils;
 pub mod cxon;
+pub mod compile_commands_json;
 
 fn main() -> () {
     let toolchain = get_cxon_config()
@@ -73,4 +74,7 @@ fn build_project<T: ToolChainTrait>() {
         .unwrap()
         .get_target_type()
     );
+    if cxon.read().unwrap().export_compile_commands {
+        generate_compile_commands_json().expect("Failed to export compile_commands.json")
+    }
 }
