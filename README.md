@@ -11,15 +11,28 @@
 cargo install cxon
 ```
 
-- ### [Install directly from github release](https://github.com/CoraBlack/cxon/releases)
+- ### [Install directly from github release](https:     //github.com/CoraBlack/cxon/releases)
+
+## cxon.json schema support
+```json5
+{
+    // beginning your cxon with field $schema to get cxon competition intellisence
+    "$schema": "https://corablack.github.io/cxon_schema/cxon.schema.json"
+
+    // other config
+}
+```
+
+the schema service is deployed (here)[https://github.com/CoraBlack/cxon_schema/tree/main]
 
 ## Features(Order by priority)
 
 - [x] Build project with compiler and linker by cxon.json immediately.(unsupport custom)
 - [x] Build cache
 - [x] Mult-thread build.
-- [x] Muti-build-target.
-- [ ] cxon.json schema support 
+- [x] Mutiple build target type.
+- [x] cxon.json schema support 
+- [x] Export compile_commands.json
 - [ ] Debug field support(Only debug currently).
 - [ ] Submodule support.
 - [ ] Multiple compile targets.
@@ -39,43 +52,43 @@ We only require a small number of essential fields for cxon.json and make the bu
     "build_dir": "build",       // the directory storing intermediate compiled product
     "output_dir": "bin",        // the directory storing final compiled product
 
-    "toolchain": "gnu",         // gnu, llvm, msvc only currently
+    "toolchain": "gnu",         // (unsupport) gnu, llvm, msvc only currently
     "cc": "",                   // (unsupport) custom c compiler
     "cxx": "",                  // (unsupport) custom c++ compiler
 
-    "threads": 4,               // count of build threads, the default value is number of your cpu - 1
+    "threads": 4,                       // count of build threads, the default value is number of your cpu - 1
 
-    "flags": [                  // parameters for c and c++ compiler
+    "flags": [                          // parameters for c and c++ compiler
         "-Wall",
         "-Wextra"
     ],
 
-    "cflags": [                 // parameters for c compiler
+    "cflags": [                         // parameters for c compiler
 
     ],
 
-    "cxxflags": [               // parameters for c++ compiler
+    "cxxflags": [                       // parameters for c++ compiler
 
     ],
 
-    "include": [                // directories where the header files are
+    "include": [                        // directories where the header files are
         
     ],
 
-    "defines": [                // defination for compiler
+    "defines": [                        // defination for compiler
 
     ],
 
-    "sources": [                // (Required) source files which will be compiled
+    "sources": [                        // (Required) source files which will be compiled
         "./main.cpp",
         "./func.cpp"
     ],
 
-    "link": [                   // directories storing required libraries
+    "link": [                           // directories storing required libraries
 
     ],
 
-    "libs": [                   // required libaries
+    "libs": [                           // required libaries
 
     ]
 }

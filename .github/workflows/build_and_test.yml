@@ -25,5 +25,7 @@ jobs:
     - name: "example build test"
       run: |
         cargo run ./example/hello_world
-        tree ./example/hello_world
+        cargo run ./example/static_lib
+        cargo run ./example/shared_lib
+        tree ./example/
         

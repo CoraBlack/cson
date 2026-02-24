@@ -1,8 +1,12 @@
 {
+    "$schema": "https://corablack.github.io/cxon_schema/cxon.schema.json",
     "project": "HelloWorld",
     "target_type": "executable",
     "build_dir": "build",
     "output_dir": "bin",
+    "export_compile_commands": true,
+    "export_compile_commands_path": "./build",
+
     "toolchain": "gnu",
     "cxxflags": [
         "-std=c++11"

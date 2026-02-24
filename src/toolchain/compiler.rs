@@ -1,6 +1,10 @@
 use std::{cmp, path::PathBuf, time::SystemTime};
 
-use crate::{cxon::get_cxon_config, object::{output::{self, Object}, source::Source}, toolchain::ToolChainTrait, utils::get_object_target_path
+use crate::{compile_commands_json::{CompileCommand, add_compile_command}, 
+    cxon::get_cxon_config,
+    object::{output::{self, Object}, source::Source},
+    toolchain::ToolChainTrait,
+    utils::{self, get_object_target_path}
 };
 
 #[derive(Clone)]
@@ -52,7 +56,8 @@ pub fn compile<T: ToolChainTrait>(src: Source) -> Object {
 }
 
 fn compile_handler<T: ToolChainTrait>(args: CompileFuncArgs) -> Object {
-    let status = std::process::Command::new(args.compiler)
+    let mut cmd = std::process::Command::new(args.compiler);
+    let cmd = cmd
         .arg(T::DEBUG_FLAG)
         .arg(T::ONLY_COMPILE_FLAG)
         .arg(args.src_path.to_str().unwrap())
@@ -60,11 +65,21 @@ fn compile_handler<T: ToolChainTrait>(args: CompileFuncArgs) -> Object {
         .arg(args.obj_path.to_str().unwrap())
         .args(args.includes)
         .args(args.defines)
-        .args(args.flags)
-        .status()
+        .args(args.flags);
+
+    let status = cmd.spawn()
         .expect(format!("Failed to compile {}", args.src_path.to_str().unwrap()).as_str());
 
-    if status.success() {
+    let mut compile_command = CompileCommand::from_source(Source::new(&args.src_path));
+    compile_command.command = utils::get_command_string(&cmd);
+
+    add_compile_command(compile_command);
+
+    let output = status
+        .wait_with_output()
+        .expect(format!("Failed to wait for the compilation process of {}", args.src_path.to_str().unwrap()).as_str());
+
+    if output.status.success() {
         println!("Compiled {} to {}", args.src_path.to_str().unwrap(), args.obj_path.to_str().unwrap());
     } else {
         panic!("Failed to compile {}", args.src_path.to_str().unwrap());

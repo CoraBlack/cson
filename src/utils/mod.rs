@@ -47,3 +47,15 @@ pub fn get_object_target_path<T: ToolChainTrait>(src: &Source) -> Result<PathBuf
 pub fn check_executable_exists(executable: &str) -> String {
     which::which(executable).expect(format!("Failed to find executable {} in system", executable).as_str()).to_str().unwrap().to_string()
 }
+
+pub fn get_command_string(cmd: &std::process::Command) -> String {
+    let mut cmd_string = String::new();
+
+    cmd_string.push_str(cmd.get_program().to_str().unwrap());
+    for arg in cmd.get_args() {
+        cmd_string.push_str(" ");
+        cmd_string.push_str(arg.to_str().unwrap());
+    }
+
+    cmd_string
+}

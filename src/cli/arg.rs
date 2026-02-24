@@ -1,5 +1,7 @@
 use std::{env::current_dir, path::PathBuf, sync::{LazyLock, Mutex}};
 
+use crate::utils;
+
 static ARGS: LazyLock<Mutex<CliArgs>> = LazyLock::new(|| {
     Mutex::new(CliArgs::new())
 });
@@ -18,9 +20,12 @@ impl CliArgs {
         let arg_col: Vec<String> = std::env::args().collect();
 
         if arg_col.len() <= 1 {
+            let mut project_dir = current_dir()
+                    .expect("Failed to get project directory automatically");
+            project_dir = utils::normalize_and_canonicalize_path(project_dir);
+
             return Self {
-                project_dir: current_dir()
-                    .expect("Failed to get project directory automatically"),
+                project_dir,
             };
         }
 
@@ -40,7 +45,7 @@ impl CliArgs {
             if project_dir.is_absolute() { project_dir } else { project_dir.canonicalize().unwrap() };
 
         Self {
-            project_dir: project_dir,
+            project_dir: utils::normalize_and_canonicalize_path(project_dir),
         }
     }
 }
