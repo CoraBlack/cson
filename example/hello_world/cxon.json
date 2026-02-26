@@ -8,7 +8,7 @@
     "export_compile_commands_path": "./build",
 
     "toolchain": "gnu",
-    "debug": false,
+    "debug": true,
     "cxxflags": [
         "-std=c++11"
     ],

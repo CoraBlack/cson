@@ -13,7 +13,7 @@ pub struct CompilerPair {
     pub cxx: String,
 }
 
-pub struct CompileFuncArgs {
+struct CompileFuncArgs {
     pub src_path: PathBuf,
     pub obj_path: PathBuf,
     pub compiler: String,
