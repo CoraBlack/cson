@@ -45,6 +45,9 @@ pub struct CxonConfig {
     #[serde(default = "default_output_dir")]
     pub output_dir: PathBuf,
 
+    #[serde(default = "default_debug_flag")]
+    debug: bool,
+
     // compiler flags
     flags:    Option<Vec<String>>,
     cflags:   Option<Vec<String>>,
@@ -173,6 +176,10 @@ impl CxonConfig {
         }
     }
 
+    pub fn get_debug_flag(&self) -> bool {
+        self.debug
+    }
+
     fn get_compiler_flags(&self) -> Vec<String> {
         let mut flags = Vec::new();
 
@@ -270,6 +277,10 @@ fn default_output_dir() -> PathBuf {
 
 fn default_export_compile_commands() -> bool {
     false
+}
+
+fn default_debug_flag() -> bool {
+    true
 }
 
 #[test]

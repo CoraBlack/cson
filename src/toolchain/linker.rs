@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::{cxon::get_cxon_config, object::output::ObjectCollection, toolchain::{TargetType, ToolChainTrait}};
 
-pub struct LinkArgs {
+struct LinkArgs {
     pub linker: String,
     pub output_path: PathBuf,
 
@@ -18,6 +18,11 @@ pub fn link<T: ToolChainTrait>(input: ObjectCollection, target_type: TargetType)
     let output_path = output_dir.join(PathBuf::from(target_name));
 
     let mut other_flags = Vec::new();
+
+    // debug flag
+    if get_cxon_config().read().unwrap().get_debug_flag() {
+        other_flags.push(T::DEBUG_FLAG.to_string());
+    }
 
     match target_type {
         TargetType::Executable => link_to_executable_cmd::<T>(input, LinkArgs {
@@ -55,49 +60,50 @@ pub fn link<T: ToolChainTrait>(input: ObjectCollection, target_type: TargetType)
     }
 }
 
-pub fn link_to_executable_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
-    std::process::Command::new(T::EXECUTABLE_LINKER)
-        .arg(T::DEBUG_FLAG)
+fn link_to_executable_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
+    std::process::Command::new(args.linker)
         .args(input.to_args())
-        .arg(T::EXECUTABLE_OUTPUT_FLAG)
+        .arg(args.output_flag)
         .arg(args.output_path.with_added_extension(T::EXECUTABLE_EXTENSION).to_str().unwrap())
         .args(args.link_dir_args)
         .args(args.link_lib_args)
+        .args(args.other_flags)
         .status()
         .expect(format!("Failed to link executable {}", args.output_path.to_str().unwrap()).as_str());
 }
 
-pub fn link_to_static_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
-    std::process::Command::new(T::STATIC_LIB_LINKER)
-        .args(T::STATIC_LIB_OUTPUT_FLAG.to_string().split(' '))
+fn link_to_static_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
+    std::process::Command::new(args.linker)
+        .args(args.output_flag.split(' '))
         .arg(args.output_path.with_extension(T::STATIC_LIB_EXTENSION).to_str().unwrap())
         .args(input.to_args())
         .args(args.link_dir_args)
         .args(args.link_lib_args)
+        .args(args.other_flags)
         .status()
         .expect(format!("Failed to link static library {}", args.output_path.to_str().unwrap()).as_str());
 }
 
-pub fn link_to_shared_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
-    std::process::Command::new(T::SHARED_LIB_LINKER)
-        .arg(T::DEBUG_FLAG)
-        .args(T::SHARED_LIB_OUTPUT_FLAG.to_string().split(' '))
+fn link_to_shared_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
+    std::process::Command::new(args.linker)
+        .args(args.output_flag.split(' '))
         .arg(args.output_path.with_extension(T::SHARED_LIB_EXTENSION).to_str().unwrap())
         .args(input.to_args())
         .args(args.link_dir_args)
         .args(args.link_lib_args)
+        .args(args.other_flags)
         .status()
         .expect(format!("Failed to link shared library {}", args.output_path.to_str().unwrap()).as_str());
 }
 
-pub fn link_to_object_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
-    std::process::Command::new(T::OBJECT_LIB_LINKER)
-        .arg(T::DEBUG_FLAG)
+fn link_to_object_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
+    std::process::Command::new(args.linker)
         .args(input.to_args())
-        .args(T::OBJECT_LIB_OUTPUT_FLAG.to_string().split(' '))
+        .args(args.output_flag.split(' '))
         .arg(args.output_path.with_extension(T::OBJECT_LIB_EXTENSION).to_str().unwrap())
         .args(args.link_dir_args)
         .args(args.link_lib_args)
+        .args(args.other_flags)
         .status()
         .expect(format!("Failed to link object file {}", args.output_path.to_str().unwrap()).as_str());
 }

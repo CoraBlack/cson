@@ -23,6 +23,7 @@ pub struct CompileFuncArgs {
 }
 
 pub fn compile<T: ToolChainTrait>(src: Source) -> Object {
+    let cxon = get_cxon_config().read().unwrap(); 
     let obj_path = get_object_target_path::<T>(&src).expect("Failed to get the target path of object file");
 
     if !need_recompile(&src, &obj_path) {
@@ -39,26 +40,32 @@ pub fn compile<T: ToolChainTrait>(src: Source) -> Object {
 
     let is_c_file = src.get_path().extension().unwrap() == "c";
 
-    let flags = if is_c_file {
-        get_cxon_config().read().unwrap().get_cflags()
+    // get compiler flags
+    let mut flags = if is_c_file {
+        cxon.get_cflags()
     } else {
-        get_cxon_config().read().unwrap().get_cxxflags()
+        cxon.get_cxxflags()
     };
+
+    
+    // get debug flag
+    if cxon.get_debug_flag() {
+        flags.push(T::DEBUG_FLAG.to_string());
+    }
 
     compile_handler::<T>(CompileFuncArgs {
         src_path: src.get_path().to_path_buf(),
         obj_path: obj_path.clone(),
         compiler: if is_c_file { T::CC.to_string() } else { T::CXX.to_string() },
         flags: flags,
-        defines: get_cxon_config().read().unwrap().get_define_args::<T>(),
-        includes: get_cxon_config().read().unwrap().get_include_dir_args::<T>(),
+        defines: cxon.get_define_args::<T>(),
+        includes: cxon.get_include_dir_args::<T>(),
     })
 }
 
 fn compile_handler<T: ToolChainTrait>(args: CompileFuncArgs) -> Object {
     let mut cmd = std::process::Command::new(args.compiler);
     let cmd = cmd
-        .arg(T::DEBUG_FLAG)
         .arg(T::ONLY_COMPILE_FLAG)
         .arg(args.src_path.to_str().unwrap())
         .arg(T::EXECUTABLE_OUTPUT_FLAG)
