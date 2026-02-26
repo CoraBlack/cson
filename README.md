@@ -23,7 +23,7 @@ cargo install cxon
 }
 ```
 
-the schema service is deployed (here)[https://github.com/CoraBlack/cxon_schema/tree/main]
+the schema service is deployed [here](https://github.com/CoraBlack/cxon_schema/tree/main)
 
 ## Features(Order by priority)
 
