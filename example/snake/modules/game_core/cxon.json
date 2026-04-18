@@ -1,0 +1,19 @@
+{
+    "$schema": "https://corablack.github.io/cxon_schema/cxon.schema.json",
+    "project": "snake_game_core",
+    "target_type": "static_lib",
+    "build_dir": "build",
+    "output_dir": "output",
+    "toolchain": "gnu",
+    "debug": false,
+    "cxxflags": [
+        "-std=c++17"
+    ],
+    "include": [
+        "./include",
+        "../settings/include"
+    ],
+    "sources": [
+        "./src/game_state.cpp"
+    ]
+}

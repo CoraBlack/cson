@@ -1,0 +1,49 @@
+{
+    "$schema": "https://corablack.github.io/cxon_schema/cxon.schema.json",
+    "project": "SnakeSDL3",
+    "target_name": "snake",
+    "target_type": "executable",
+    "build_dir": "build",
+    "output_dir": "bin",
+    "export_compile_commands": true,
+    "export_compile_commands_path": "./build",
+    "modules": [
+        "./modules/gameplay",
+        "./modules/game_core",
+        "./modules/settings"
+    ],
+
+    "toolchain": "gnu",
+    "debug": true,
+    "threads": 4,
+
+    "flags": [
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic"
+    ],
+    "cxxflags": [
+        "-std=c++17",
+        "-O2"
+    ],
+
+    "defines": [
+        "SDL_MAIN_HANDLED"
+    ],
+
+    "include": [
+        "./include",
+        "./modules/settings/include",
+        "./modules/game_core/include",
+        "./modules/gameplay/include"
+    ],
+
+    "sources": [
+        "./src/main.cpp",
+        "./src/snake_app.cpp"
+    ],
+
+    "libs": [
+        "SDL3"
+    ]
+}
