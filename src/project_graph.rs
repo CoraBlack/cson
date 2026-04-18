@@ -7,6 +7,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use crate::cxon::CxonConfig;
+use crate::error::fail;
 use crate::utils;
 
 #[derive(Debug, Clone)]
@@ -41,7 +42,10 @@ fn load_node(
 
     if visiting.contains(&id) {
         // DFS cycle detection (A -> B -> ... -> A).
-        panic!("Detected cyclic module dependency at {}", id.display());
+        fail(format!(
+            "detected cyclic module dependency at {}",
+            id.display()
+        ));
     }
     visiting.insert(id.clone());
 
@@ -56,11 +60,11 @@ fn load_node(
 
         // Keep a single toolchain family in one module tree for now.
         if child.config.toolchain.to_lowercase() != config.toolchain.to_lowercase() {
-            panic!(
+            fail(format!(
                 "Toolchain mismatch between module {} and child {}",
                 config.project_dir.display(),
                 child.config.project_dir.display()
-            );
+            ));
         }
 
         children.push(child);

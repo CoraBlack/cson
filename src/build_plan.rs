@@ -8,6 +8,7 @@ use std::path::Component;
 use std::path::PathBuf;
 
 use crate::cxon::CxonConfig;
+use crate::error::{fail, fail_option, fail_result};
 use crate::project_graph::ModuleGraph;
 
 #[derive(Debug, Clone)]
@@ -51,18 +52,20 @@ impl BuildPlan {
     }
 
     pub fn root_target(&self) -> &TargetPlan {
-        self.targets
-            .get(&self.root_id)
-            .expect("Root target not found in build plan")
+        match self.targets.get(&self.root_id) {
+            Some(target) => target,
+            None => fail("root target not found in build plan"),
+        }
     }
 }
 
 /// For multi-module builds, keep submodule artifacts under root folders.
 fn relocate_module_artifact_dirs(root_id: &PathBuf, targets: &mut HashMap<PathBuf, TargetPlan>) {
     let (root_project_dir, root_build_dir, root_output_dir) = {
-        let root = targets
-            .get(root_id)
-            .expect("Root target not found while relocating module artifact dirs");
+        let root = match targets.get(root_id) {
+            Some(root) => root,
+            None => fail("root target not found while relocating module artifact dirs"),
+        };
 
         (
             root.config.project_dir.clone(),
@@ -81,29 +84,29 @@ fn relocate_module_artifact_dirs(root_id: &PathBuf, targets: &mut HashMap<PathBu
         target.config.build_dir = root_build_dir.join("modules").join(&module_rel);
         target.config.output_dir = root_output_dir.join("modules").join(&module_rel);
 
-        fs::create_dir_all(&target.config.build_dir).expect(
+        fail_result(
+            fs::create_dir_all(&target.config.build_dir),
             format!(
-                "Failed to create relocated build dir {}",
+                "failed to create relocated build dir {}",
                 target.config.build_dir.display()
-            )
-            .as_str(),
+            ),
         );
-        fs::create_dir_all(&target.config.output_dir).expect(
+        fail_result(
+            fs::create_dir_all(&target.config.output_dir),
             format!(
-                "Failed to create relocated output dir {}",
+                "failed to create relocated output dir {}",
                 target.config.output_dir.display()
-            )
-            .as_str(),
+            ),
         );
     }
 }
 
 fn module_relative_segment(root_project_dir: &PathBuf, module_project_dir: &PathBuf) -> PathBuf {
     let Some(rel) = pathdiff::diff_paths(module_project_dir, root_project_dir) else {
-        return module_project_dir
-            .file_name()
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("module"));
+        return PathBuf::from(fail_option(
+            module_project_dir.file_name(),
+            "failed to derive module folder name",
+        ));
     };
 
     let has_parent = rel
@@ -111,10 +114,10 @@ fn module_relative_segment(root_project_dir: &PathBuf, module_project_dir: &Path
         .any(|component| matches!(component, Component::ParentDir));
 
     if rel.as_os_str().is_empty() || has_parent {
-        return module_project_dir
-            .file_name()
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("module"));
+        return PathBuf::from(fail_option(
+            module_project_dir.file_name(),
+            "failed to derive module folder name",
+        ));
     }
 
     rel
@@ -154,17 +157,18 @@ fn topo_visit(
     }
 
     if visiting.contains(id) {
-        panic!(
-            "Detected cycle while generating build plan at {}",
+        fail(format!(
+            "detected cycle while generating build plan at {}",
             id.display()
-        );
+        ));
     }
 
     visiting.insert(id.clone());
 
-    let target = targets
-        .get(id)
-        .expect("Target missing during build plan generation");
+    let target = match targets.get(id) {
+        Some(target) => target,
+        None => fail("target missing during build plan generation"),
+    };
 
     for dep in &target.deps {
         topo_visit(dep, targets, visiting, visited, order);

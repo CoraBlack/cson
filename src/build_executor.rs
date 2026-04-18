@@ -16,6 +16,7 @@ use crate::{
     build_plan::{BuildPlan, TargetPlan},
     compile_commands_json::generate_compile_commands_json,
     cxon::CxonConfig,
+    error::{fail, fail_result},
     object::{output::ObjectCollection, source::Source},
     toolchain::{self, compiler, linker, TargetType, ToolChain, ToolChainTrait},
 };
@@ -35,11 +36,10 @@ pub fn execute_build_plan(plan: &BuildPlan) {
     let mut artifacts = std::collections::HashMap::new();
 
     for id in &plan.order {
-        let target = plan
-            .targets
-            .get(id)
-            .expect("Target missing while executing build plan")
-            .clone();
+        let target = match plan.targets.get(id) {
+            Some(target) => target.clone(),
+            None => fail("target missing while executing build plan"),
+        };
 
         let dep_artifacts = target
             .deps
@@ -53,8 +53,10 @@ pub fn execute_build_plan(plan: &BuildPlan) {
 
     let root = plan.root_target();
     if root.config.export_compile_commands {
-        generate_compile_commands_json(&root.config)
-            .expect("Failed to export compile_commands.json");
+        fail_result(
+            generate_compile_commands_json(&root.config),
+            "failed to export compile_commands.json",
+        );
     }
 }
 
@@ -81,10 +83,14 @@ fn build_with_toolchain<T: ToolChainTrait>(
     inject_dependency_artifacts(&mut cxon, dep_artifacts);
     let target_type = cxon.get_target_type();
 
-    std::fs::create_dir_all(&cxon.build_dir)
-        .expect(format!("Failed to create build dir {}", cxon.build_dir.display()).as_str());
-    std::fs::create_dir_all(&cxon.output_dir)
-        .expect(format!("Failed to create output dir {}", cxon.output_dir.display()).as_str());
+    fail_result(
+        std::fs::create_dir_all(&cxon.build_dir),
+        format!("failed to create build dir {}", cxon.build_dir.display()),
+    );
+    fail_result(
+        std::fs::create_dir_all(&cxon.output_dir),
+        format!("failed to create output dir {}", cxon.output_dir.display()),
+    );
 
     let sources = cxon.sources.clone().unwrap_or_default();
     let sources = Arc::new(Mutex::new(VecDeque::from(sources)));
@@ -105,20 +111,42 @@ fn build_with_toolchain<T: ToolChainTrait>(
         let objects = objects.clone();
         let cxon = cxon.clone();
 
-        compile_threads.push(thread::spawn(move || {
-            while let Some(source) = sources.lock().unwrap().pop_back() {
-                let source = Source::new(source.clone().as_path(), &cxon.project_dir);
-                let obj = compiler::compile::<T>(source, &cxon);
-                objects.lock().unwrap().objects.push(obj);
+        compile_threads.push(thread::spawn(move || loop {
+            let source_path = {
+                let mut locked = match sources.lock() {
+                    Ok(guard) => guard,
+                    Err(_) => fail("failed to access sources queue"),
+                };
+
+                locked.pop_back()
+            };
+
+            let Some(source_path) = source_path else {
+                break;
+            };
+
+            let source = Source::new(source_path.as_path(), &cxon.project_dir);
+            let obj = compiler::compile::<T>(source, &cxon);
+
+            match objects.lock() {
+                Ok(mut guard) => guard.objects.push(obj),
+                Err(_) => fail("failed to store compiled object"),
             }
         }));
     }
 
     for thread in compile_threads {
-        thread.join().unwrap();
+        if thread.join().is_err() {
+            fail("compile thread panicked");
+        }
     }
 
-    linker::link::<T>(objects.lock().unwrap().clone(), target_type, &cxon);
+    let objects = match objects.lock() {
+        Ok(guard) => guard.clone(),
+        Err(_) => fail("failed to gather object collection for linking"),
+    };
+
+    linker::link::<T>(objects, target_type, &cxon);
 
     Artifact {
         module_id: cxon.project_dir.clone(),

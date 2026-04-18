@@ -6,7 +6,8 @@
 //! 3. Generate build plan and execute in dependency order.
 
 use crate::{
-    build_executor::execute_build_plan, build_plan::BuildPlan, project_graph::load_module_graph,
+    build_executor::execute_build_plan, build_plan::BuildPlan, error::install_panic_hook,
+    project_graph::load_module_graph,
 };
 
 pub mod cli {
@@ -20,11 +21,14 @@ pub mod build_executor;
 pub mod build_plan;
 pub mod compile_commands_json;
 pub mod cxon;
+pub mod error;
 pub mod project_graph;
 pub mod toolchain;
 pub mod utils;
 
 fn main() -> () {
+    install_panic_hook();
+
     // CLI accepts either a project directory or a direct `cxon.json` path.
     let args = cli::arg::get_args();
     let module_graph = load_module_graph(args.project_dir.as_path());

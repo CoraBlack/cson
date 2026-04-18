@@ -7,6 +7,7 @@ use std::{cmp, path::PathBuf, time::SystemTime};
 use crate::{
     compile_commands_json::{add_compile_command, CompileCommand},
     cxon::CxonConfig,
+    error::{fail, fail_result},
     object::{
         output::{self, Object},
         source::Source,
@@ -36,17 +37,28 @@ struct CompileFuncArgs {
 /// The project context is provided explicitly through `cxon` so this function
 /// can be reused for module-aware builds.
 pub fn compile<T: ToolChainTrait>(src: Source, cxon: &CxonConfig) -> Object {
-    let obj_path = get_object_target_path::<T>(&src, &cxon.project_dir, &cxon.build_dir)
-        .expect("Failed to get the target path of object file");
+    let obj_path = fail_result(
+        get_object_target_path::<T>(&src, &cxon.project_dir, &cxon.build_dir),
+        "failed to get target path for object file",
+    );
 
     if !need_recompile(&src, &obj_path) {
         return Object {
             path: obj_path.clone(),
-            modified: Some(obj_path.metadata().unwrap().modified().unwrap()),
+            modified: Some(fail_result(
+                fail_result(obj_path.metadata(), "failed to read object metadata").modified(),
+                "failed to read object modification time",
+            )),
         };
     }
 
-    let is_c_file = src.get_path().extension().unwrap() == "c";
+    let is_c_file = match src.get_path().extension() {
+        Some(ext) => ext == "c",
+        None => fail(format!(
+            "source file has no extension: {}",
+            src.get_path().display()
+        )),
+    };
 
     // get compiler flags
     let mut flags = if is_c_file {
@@ -79,16 +91,17 @@ fn compile_handler<T: ToolChainTrait>(args: CompileFuncArgs) -> Object {
     let mut cmd = std::process::Command::new(args.compiler);
     let cmd = cmd
         .arg(T::ONLY_COMPILE_FLAG)
-        .arg(args.src_path.to_str().unwrap())
+        .arg(args.src_path.to_string_lossy().to_string())
         .arg(T::EXECUTABLE_OUTPUT_FLAG)
-        .arg(args.obj_path.to_str().unwrap())
+        .arg(args.obj_path.to_string_lossy().to_string())
         .args(args.includes)
         .args(args.defines)
         .args(args.flags);
 
-    let status = cmd
-        .spawn()
-        .expect(format!("Failed to compile {}", args.src_path.to_str().unwrap()).as_str());
+    let status = fail_result(
+        cmd.spawn(),
+        format!("failed to start compiler for {}", args.src_path.display()),
+    );
 
     // Record compile command for optional compile_commands.json export.
     let mut compile_command = CompileCommand::from_source(
@@ -99,22 +112,19 @@ fn compile_handler<T: ToolChainTrait>(args: CompileFuncArgs) -> Object {
 
     add_compile_command(compile_command);
 
-    let output = status.wait_with_output().expect(
-        format!(
-            "Failed to wait for the compilation process of {}",
-            args.src_path.to_str().unwrap()
-        )
-        .as_str(),
+    let output = fail_result(
+        status.wait_with_output(),
+        format!("failed while compiling {}", args.src_path.display()),
     );
 
     if output.status.success() {
         println!(
             "Compiled {} to {}",
-            args.src_path.to_str().unwrap(),
-            args.obj_path.to_str().unwrap()
+            args.src_path.display(),
+            args.obj_path.display()
         );
     } else {
-        panic!("Failed to compile {}", args.src_path.to_str().unwrap());
+        fail(format!("failed to compile {}", args.src_path.display()));
     }
 
     output::Object {
@@ -126,7 +136,7 @@ fn compile_handler<T: ToolChainTrait>(args: CompileFuncArgs) -> Object {
 fn need_recompile(src: &Source, obj_path: &PathBuf) -> bool {
     // Reuse existing object when source timestamp is older than object.
     if obj_path.exists() {
-        let metadata = obj_path.metadata().unwrap();
+        let metadata = fail_result(obj_path.metadata(), "failed to read object metadata");
         let Ok(modified) = metadata.modified() else {
             return true;
         };

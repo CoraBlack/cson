@@ -3,7 +3,6 @@
 //! This module parses `cxon.json`, validates core fields, and resolves
 //! project-relative paths into canonical absolute paths.
 
-use core::panic;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -11,6 +10,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+use crate::error::{fail, fail_option, fail_result};
 use crate::toolchain::{TargetType, ToolChain, ToolChainTrait};
 use crate::utils;
 
@@ -110,21 +110,21 @@ impl CxonConfig {
         };
 
         let file_path = utils::normalize_and_canonicalize_path(file_path);
-        let project_dir = file_path
-            .parent()
-            .expect("Invalid cxon.json file path")
-            .to_path_buf();
+        let project_dir =
+            fail_option(file_path.parent(), "invalid cxon.json file path").to_path_buf();
 
-        let content = fs::read_to_string(&file_path).expect(
+        let content = fail_result(
+            fs::read_to_string(&file_path),
             format!(
                 "Failed to read cxon.json file from {}",
                 file_path.to_string_lossy()
-            )
-            .as_str(),
+            ),
         );
 
-        let mut cxon: CxonConfig =
-            serde_json::from_str(&content).expect("Failed to parse cxon configuration");
+        let mut cxon: CxonConfig = fail_result(
+            serde_json::from_str(&content),
+            "failed to parse cxon configuration",
+        );
 
         cxon.project_dir = project_dir;
 
@@ -137,7 +137,10 @@ impl CxonConfig {
         let target_type = cxon.target_type.clone().to_lowercase();
         if !["executable", "static_lib", "shared_lib", "object_lib"].contains(&target_type.as_str())
         {
-            panic!("Unsupported target type: {}. Supported target types are: executable, static_lib, shared_lib, object_lib", cxon.target_type);
+            fail(format!(
+                "unsupported target type: {}. Supported target types are: executable, static_lib, shared_lib, object_lib",
+                cxon.target_type
+            ));
         }
 
         // A module can provide sources directly, or delegate work to child modules.
@@ -152,16 +155,16 @@ impl CxonConfig {
             .map(|m| !m.is_empty())
             .unwrap_or(false);
         if !has_sources && !has_modules {
-            panic!("No source files or modules specified in cxon configuration");
+            fail("no source files or modules specified in cxon configuration");
         }
 
         // Toolchain check
         let supported_toolchains = ["gnu", "llvm", "msvc"];
         if !supported_toolchains.contains(&cxon.toolchain.as_str()) {
-            panic!(
+            fail(format!(
                 "Unsupported toolchain: {}. Supported toolchains are: {:?}",
                 cxon.toolchain, supported_toolchains
-            );
+            ));
         }
 
         cxon.resolve_paths()
@@ -178,11 +181,16 @@ impl CxonConfig {
         if !path.exists() {
             match mode {
                 InitDirMode::RequireExists => {
-                    panic!("Directory {} does not exist", path.to_string_lossy());
+                    fail(format!(
+                        "directory {} does not exist",
+                        path.to_string_lossy()
+                    ));
                 }
                 InitDirMode::CreateIfMissing => {
-                    fs::create_dir_all(&path)
-                        .expect(format!("Failed to create {}", path.to_string_lossy()).as_str());
+                    fail_result(
+                        fs::create_dir_all(&path),
+                        format!("failed to create {}", path.to_string_lossy()),
+                    );
                 }
                 InitDirMode::ResolveOnly => {
                     return path;
@@ -244,7 +252,7 @@ impl CxonConfig {
     }
 
     pub fn get_target_name(&self) -> String {
-        self.target_name.clone().unwrap()
+        fail_option(self.target_name.clone(), "missing target_name in config")
     }
 
     pub fn get_target_type(&self) -> TargetType {
@@ -253,7 +261,10 @@ impl CxonConfig {
             "executable" => TargetType::Executable,
             "static_lib" => TargetType::StaticLib,
             "shared_lib" => TargetType::SharedLib,
-            _ => panic!("Unsupported target type: {}. Supported target types are: executable, static_lib, shared_lib", self.target_type),
+            _ => fail(format!(
+                "unsupported target type: {}. Supported target types are: executable, static_lib, shared_lib, object_lib",
+                self.target_type
+            )),
         }
     }
 
@@ -262,10 +273,10 @@ impl CxonConfig {
             "gnu" => ToolChain::GNU(),
             "llvm" => ToolChain::LLVM(),
             "msvc" => ToolChain::MSVC(),
-            _ => panic!(
+            _ => fail(format!(
                 "Unsupported toolchain: {}. Supported toolchains are: gnu, llvm, msvc",
                 self.toolchain
-            ),
+            )),
         }
     }
 
@@ -326,7 +337,7 @@ impl CxonConfig {
             args.push(format!(
                 "{}{}",
                 T::INCLUDE_FLAG_PREFIX,
-                include_dir.to_str().unwrap().to_string()
+                include_dir.to_string_lossy()
             ));
         }
 
@@ -343,7 +354,7 @@ impl CxonConfig {
             args.push(format!(
                 "{}{}",
                 T::LINK_DIR_FLAG_PREFIX,
-                link_dir.to_str().unwrap().to_string()
+                link_dir.to_string_lossy()
             ));
         }
 

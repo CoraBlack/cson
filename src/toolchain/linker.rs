@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use crate::{
     cxon::CxonConfig,
+    error::{fail, fail_result},
     object::output::ObjectCollection,
     toolchain::{TargetType, ToolChainTrait},
 };
@@ -99,27 +100,25 @@ fn link_to_executable_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
         .arg(
             args.output_path
                 .with_added_extension(T::EXECUTABLE_EXTENSION)
-                .to_str()
-                .unwrap(),
+                .to_string_lossy()
+                .to_string(),
         )
         .args(args.extra_link_files)
         .args(args.link_dir_args)
         .args(args.link_lib_args)
         .args(args.other_flags)
-        .status()
-        .expect(
-            format!(
-                "Failed to link executable {}",
-                args.output_path.to_str().unwrap()
-            )
-            .as_str(),
-        );
+        .status();
+
+    let status = fail_result(
+        status,
+        format!("failed to invoke linker for {}", args.output_path.display()),
+    );
 
     if !status.success() {
-        panic!(
-            "Failed to link executable {}",
-            args.output_path.to_string_lossy()
-        );
+        fail(format!(
+            "failed to link executable {}",
+            args.output_path.display()
+        ));
     }
 }
 
@@ -130,28 +129,26 @@ fn link_to_static_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
         .arg(
             args.output_path
                 .with_extension(T::STATIC_LIB_EXTENSION)
-                .to_str()
-                .unwrap(),
+                .to_string_lossy()
+                .to_string(),
         )
         .args(args.extra_link_files)
         .args(input.to_args())
         .args(args.link_dir_args)
         .args(args.link_lib_args)
         .args(args.other_flags)
-        .status()
-        .expect(
-            format!(
-                "Failed to link static library {}",
-                args.output_path.to_str().unwrap()
-            )
-            .as_str(),
-        );
+        .status();
+
+    let status = fail_result(
+        status,
+        format!("failed to invoke linker for {}", args.output_path.display()),
+    );
 
     if !status.success() {
-        panic!(
-            "Failed to link static library {}",
-            args.output_path.to_string_lossy()
-        );
+        fail(format!(
+            "failed to link static library {}",
+            args.output_path.display()
+        ));
     }
 }
 
@@ -162,28 +159,26 @@ fn link_to_shared_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
         .arg(
             args.output_path
                 .with_extension(T::SHARED_LIB_EXTENSION)
-                .to_str()
-                .unwrap(),
+                .to_string_lossy()
+                .to_string(),
         )
         .args(args.extra_link_files)
         .args(input.to_args())
         .args(args.link_dir_args)
         .args(args.link_lib_args)
         .args(args.other_flags)
-        .status()
-        .expect(
-            format!(
-                "Failed to link shared library {}",
-                args.output_path.to_str().unwrap()
-            )
-            .as_str(),
-        );
+        .status();
+
+    let status = fail_result(
+        status,
+        format!("failed to invoke linker for {}", args.output_path.display()),
+    );
 
     if !status.success() {
-        panic!(
-            "Failed to link shared library {}",
-            args.output_path.to_string_lossy()
-        );
+        fail(format!(
+            "failed to link shared library {}",
+            args.output_path.display()
+        ));
     }
 }
 
@@ -195,26 +190,24 @@ fn link_to_object_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs
         .arg(
             args.output_path
                 .with_extension(T::OBJECT_LIB_EXTENSION)
-                .to_str()
-                .unwrap(),
+                .to_string_lossy()
+                .to_string(),
         )
         .args(args.extra_link_files)
         .args(args.link_dir_args)
         .args(args.link_lib_args)
         .args(args.other_flags)
-        .status()
-        .expect(
-            format!(
-                "Failed to link object file {}",
-                args.output_path.to_str().unwrap()
-            )
-            .as_str(),
-        );
+        .status();
+
+    let status = fail_result(
+        status,
+        format!("failed to invoke linker for {}", args.output_path.display()),
+    );
 
     if !status.success() {
-        panic!(
-            "Failed to link object file {}",
-            args.output_path.to_string_lossy()
-        );
+        fail(format!(
+            "failed to link object file {}",
+            args.output_path.display()
+        ));
     }
 }
