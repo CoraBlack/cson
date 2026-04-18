@@ -2,6 +2,7 @@
 /target/
 /bin/
 /build/
+AGENTS.md
 
 # example production files
 /example/**/bin/
