@@ -1,10 +1,19 @@
-use std::{env::current_dir, path::PathBuf, sync::{LazyLock, Mutex}};
+//! CLI argument parsing.
+//!
+//! Supported forms:
+//! - `cxon` (use current directory)
+//! - `cxon <project_dir>`
+//! - `cxon <path/to/cxon.json>`
+
+use std::{
+    env::current_dir,
+    path::PathBuf,
+    sync::{LazyLock, Mutex},
+};
 
 use crate::utils;
 
-static ARGS: LazyLock<Mutex<CliArgs>> = LazyLock::new(|| {
-    Mutex::new(CliArgs::new())
-});
+static ARGS: LazyLock<Mutex<CliArgs>> = LazyLock::new(|| Mutex::new(CliArgs::new()));
 
 pub fn get_args() -> CliArgs {
     ARGS.lock().unwrap().clone()
@@ -16,33 +25,42 @@ pub struct CliArgs {
 }
 
 impl CliArgs {
+    /// Parse command-line arguments once and normalize target project directory.
     pub fn new() -> Self {
         let arg_col: Vec<String> = std::env::args().collect();
 
         if arg_col.len() <= 1 {
-            let mut project_dir = current_dir()
-                    .expect("Failed to get project directory automatically");
+            let mut project_dir =
+                current_dir().expect("Failed to get project directory automatically");
             project_dir = utils::normalize_and_canonicalize_path(project_dir);
 
-            return Self {
-                project_dir,
-            };
+            return Self { project_dir };
         }
 
         let project_dir = PathBuf::from(arg_col[1].clone());
         if !project_dir.exists() {
-            Err(()).expect(format!("cxon project dir is not available: {}", project_dir.display()).as_str())
+            Err(()).expect(
+                format!(
+                    "cxon project dir is not available: {}",
+                    project_dir.display()
+                )
+                .as_str(),
+            )
         }
 
         // remove cxon.json if it's included in the path
-        let project_dir = if project_dir.is_file() && project_dir.file_name().unwrap() == "cxon.json" {
-            project_dir.parent().unwrap().to_path_buf()
-        } else {
-            project_dir
-        };
+        let project_dir =
+            if project_dir.is_file() && project_dir.file_name().unwrap() == "cxon.json" {
+                project_dir.parent().unwrap().to_path_buf()
+            } else {
+                project_dir
+            };
 
-        let project_dir = 
-            if project_dir.is_absolute() { project_dir } else { project_dir.canonicalize().unwrap() };
+        let project_dir = if project_dir.is_absolute() {
+            project_dir
+        } else {
+            project_dir.canonicalize().unwrap()
+        };
 
         Self {
             project_dir: utils::normalize_and_canonicalize_path(project_dir),

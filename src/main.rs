@@ -1,6 +1,23 @@
-use std::{collections::VecDeque, sync::{Arc, Mutex}, thread};
+//! CLI entrypoint for cxon.
+//!
+//! The runtime flow is:
+//! 1. Parse CLI args and locate root `cxon.json`.
+//! 2. Load the module graph recursively.
+//! 3. Build the root project with the selected toolchain.
 
-use crate::{compile_commands_json::generate_compile_commands_json, cxon::get_cxon_config, object::{output::ObjectCollection, source::Source}, toolchain::{ToolChain, ToolChainTrait, compiler, gnu::GNU, linker, llvm::LLVM, msvc::MSVC}};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex},
+    thread,
+};
+
+use crate::{
+    compile_commands_json::generate_compile_commands_json,
+    cxon::CxonConfig,
+    object::{output::ObjectCollection, source::Source},
+    project_graph::load_module_graph,
+    toolchain::{compiler, gnu::GNU, linker, llvm::LLVM, msvc::MSVC, ToolChain, ToolChainTrait},
+};
 
 pub mod cli {
     pub mod arg;
@@ -9,44 +26,42 @@ pub mod object {
     pub mod output;
     pub mod source;
 }
+pub mod compile_commands_json;
+pub mod cxon;
+pub mod project_graph;
 pub mod toolchain;
 pub mod utils;
-pub mod cxon;
-pub mod compile_commands_json;
 
 fn main() -> () {
-    let toolchain = get_cxon_config()
-        .read()
-        .unwrap()
-        .get_toolchain();
-    
+    // CLI accepts either a project directory or a direct `cxon.json` path.
+    let args = cli::arg::get_args();
+    let module_graph = load_module_graph(args.project_dir.as_path());
+    let cxon = module_graph.config.clone();
+
+    let toolchain = cxon.get_toolchain();
+
     match toolchain {
-        ToolChain::GNU()  => build_project::<GNU>(),
-        ToolChain::LLVM() => build_project::<LLVM>(),
-        ToolChain::MSVC() => build_project::<MSVC>(),
+        ToolChain::GNU() => build_project::<GNU>(cxon),
+        ToolChain::LLVM() => build_project::<LLVM>(cxon),
+        ToolChain::MSVC() => build_project::<MSVC>(cxon),
     }
 }
 
-fn build_project<T: ToolChainTrait>() {
-    let cxon = cxon::get_cxon_config();
-
-    let sources = cxon
-        .read()
-        .unwrap()
-        .sources
-        .clone()
-        .expect("No source files specified in cxon configuration");
+fn build_project<T: ToolChainTrait>(cxon: CxonConfig) {
+    // Sources are canonicalized during config loading.
+    // Empty is allowed for module-only projects.
+    let sources = cxon.sources.clone().unwrap_or_default();
 
     let sources = Arc::new(Mutex::new(VecDeque::from(sources)));
 
-    let objects = ObjectCollection{
+    let objects = ObjectCollection {
         objects: Vec::new(),
     };
     let objects = Arc::new(Mutex::new(objects));
 
-    let thread_count = match cxon.read().unwrap().threads {
+    let thread_count = match cxon.threads {
         Some(count) => count,
-        None => num_cpus::get() as usize - 1,
+        None => std::cmp::max(1, num_cpus::get().saturating_sub(1)),
     };
 
     let mut compile_threads = Vec::new();
@@ -54,11 +69,13 @@ fn build_project<T: ToolChainTrait>() {
     for _ in 0..thread_count {
         let sources = sources.clone();
         let objects = objects.clone();
+        let cxon = cxon.clone();
 
         compile_threads.push(thread::spawn(move || {
             while let Some(source) = sources.lock().unwrap().pop_back() {
-                let source = Source::new(source.clone().as_path());
-                let obj = compiler::compile::<T>(source);
+                // Source path handling must use current project context.
+                let source = Source::new(source.clone().as_path(), &cxon.project_dir);
+                let obj = compiler::compile::<T>(source, &cxon);
                 objects.lock().unwrap().objects.push(obj);
             }
         }));
@@ -68,13 +85,14 @@ fn build_project<T: ToolChainTrait>() {
         thread.join().unwrap();
     }
 
-    linker::link::<T>(objects.lock().unwrap().clone(), 
-        get_cxon_config()
-        .read()
-        .unwrap()
-        .get_target_type()
+    linker::link::<T>(
+        objects.lock().unwrap().clone(),
+        cxon.get_target_type(),
+        &cxon,
     );
-    if cxon.read().unwrap().export_compile_commands {
-        generate_compile_commands_json().expect("Failed to export compile_commands.json")
+
+    // compile_commands.json is generated only when explicitly enabled.
+    if cxon.export_compile_commands {
+        generate_compile_commands_json(&cxon).expect("Failed to export compile_commands.json")
     }
 }

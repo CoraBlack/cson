@@ -1,3 +1,5 @@
+//! Build output models.
+
 use std::time::SystemTime;
 
 #[derive(Clone)]
@@ -12,6 +14,7 @@ pub struct ObjectCollection {
 }
 
 impl ObjectCollection {
+    /// Convert object list into linker argument strings.
     pub fn to_args(&self) -> Vec<String> {
         let mut arg_str = Vec::new();
         for obj in &self.objects {
@@ -31,5 +34,5 @@ impl ObjectCollection {
 // }
 
 // pub struct SharedLib {
-    
+
 // }

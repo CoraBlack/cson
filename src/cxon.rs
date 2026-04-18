@@ -1,26 +1,43 @@
+//! cxon configuration model and loader.
+//!
+//! This module parses `cxon.json`, validates core fields, and resolves
+//! project-relative paths into canonical absolute paths.
+
 use core::panic;
-use std::{fs, path::{Path, PathBuf}, sync::{LazyLock, RwLock}};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{cli::arg::{self, get_args}, toolchain::{TargetType, ToolChain, ToolChainTrait}};
+use crate::toolchain::{TargetType, ToolChain, ToolChainTrait};
 use crate::utils;
 
-static CONFIG: LazyLock<RwLock<CxonConfig>> = LazyLock::new(|| {
-    RwLock::new({
-        let arg = arg::get_args();
-        let path = arg.project_dir;
-
-        CxonConfig::new(path.as_path())
-    })
-});
-
-pub fn get_cxon_config() -> &'static RwLock<CxonConfig> {
-    &CONFIG
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+pub enum ModuleRef {
+    /// Short form: `"./path/to/module"`
+    Path(String),
+    /// Extended form for future options: `{ "path": "./path/to/module" }`
+    Detail { path: String },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl ModuleRef {
+    pub fn path(&self) -> &str {
+        match self {
+            ModuleRef::Path(path) => path,
+            ModuleRef::Detail { path } => path,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CxonConfig {
+    /// Directory containing the current `cxon.json`.
+    /// Filled at runtime, not read from JSON.
+    #[serde(skip)]
+    pub project_dir: PathBuf,
     pub project: String,
 
     // build settings
@@ -31,9 +48,11 @@ pub struct CxonConfig {
     pub export_compile_commands: bool,
     pub export_compile_commands_path: Option<PathBuf>,
 
+    pub modules: Option<Vec<ModuleRef>>,
+
     // toolchain settings
     pub toolchain: String,
-    pub cc:  Option<String>,
+    pub cc: Option<String>,
     pub cxx: Option<String>,
 
     // building settings
@@ -49,8 +68,8 @@ pub struct CxonConfig {
     debug: bool,
 
     // compiler flags
-    flags:    Option<Vec<String>>,
-    cflags:   Option<Vec<String>>,
+    flags: Option<Vec<String>>,
+    cflags: Option<Vec<String>>,
     cxxflags: Option<Vec<String>>,
 
     // source files
@@ -59,17 +78,24 @@ pub struct CxonConfig {
     // compiler defines and includes
     defines: Option<Vec<String>>,
     include: Option<Vec<PathBuf>>,
-    link:    Option<Vec<PathBuf>>,
-    libs:    Option<Vec<String>>,
+    link: Option<Vec<PathBuf>>,
+    libs: Option<Vec<String>>,
 }
 
 impl CxonConfig {
-    pub fn new(path: &Path) -> CxonConfig {
+    /// Load config from either a project directory or a direct `cxon.json` path.
+    pub fn from_path(path: &Path) -> CxonConfig {
         let file_path = if path.is_dir() {
             path.join("cxon.json")
         } else {
             path.to_path_buf()
         };
+
+        let file_path = utils::normalize_and_canonicalize_path(file_path);
+        let project_dir = file_path
+            .parent()
+            .expect("Invalid cxon.json file path")
+            .to_path_buf();
 
         let content = fs::read_to_string(&file_path).expect(
             format!(
@@ -79,8 +105,10 @@ impl CxonConfig {
             .as_str(),
         );
 
-        let mut cxon: CxonConfig = serde_json::from_str(&content)
-            .expect("Failed to parse cxon configuration");
+        let mut cxon: CxonConfig =
+            serde_json::from_str(&content).expect("Failed to parse cxon configuration");
+
+        cxon.project_dir = project_dir;
 
         // Target name check
         if cxon.target_name.is_none() {
@@ -89,27 +117,44 @@ impl CxonConfig {
 
         // build target type check
         let target_type = cxon.target_type.clone().to_lowercase();
-        if !["executable", "static_lib", "shared_lib", "object_lib"].contains(&target_type.as_str()) {
+        if !["executable", "static_lib", "shared_lib", "object_lib"].contains(&target_type.as_str())
+        {
             panic!("Unsupported target type: {}. Supported target types are: executable, static_lib, shared_lib, object_lib", cxon.target_type);
         }
 
-        // Source file check
-        if cxon.sources.is_none() || cxon.sources.as_ref().unwrap().is_empty() {
-            panic!("No source files specified in cxon configuration");
+        // A module can provide sources directly, or delegate work to child modules.
+        let has_sources = cxon
+            .sources
+            .as_ref()
+            .map(|s| !s.is_empty())
+            .unwrap_or(false);
+        let has_modules = cxon
+            .modules
+            .as_ref()
+            .map(|m| !m.is_empty())
+            .unwrap_or(false);
+        if !has_sources && !has_modules {
+            panic!("No source files or modules specified in cxon configuration");
         }
 
         // Toolchain check
         let supported_toolchains = ["gnu", "llvm", "msvc"];
         if !supported_toolchains.contains(&cxon.toolchain.as_str()) {
-            panic!("Unsupported toolchain: {}. Supported toolchains are: {:?}", cxon.toolchain, supported_toolchains);
+            panic!(
+                "Unsupported toolchain: {}. Supported toolchains are: {:?}",
+                cxon.toolchain, supported_toolchains
+            );
         }
 
         cxon.resolve_paths()
     }
 
-    fn init_dir(path: PathBuf, cda: bool) -> PathBuf {
+    /// Initialize and normalize a path.
+    ///
+    /// `cda` means "create directory automatically" when missing.
+    fn init_dir(base_dir: &Path, path: PathBuf, cda: bool) -> PathBuf {
         let path = if !path.is_absolute() {
-            get_args().project_dir.join(path)
+            base_dir.join(path)
         } else {
             path
         };
@@ -119,37 +164,45 @@ impl CxonConfig {
                 panic!("Directory {} does not exist", path.to_string_lossy());
             }
 
-            fs::create_dir_all(&path).expect(format!("Failed to create {}", path.to_string_lossy()).as_str());
+            fs::create_dir_all(&path)
+                .expect(format!("Failed to create {}", path.to_string_lossy()).as_str());
         }
 
         utils::normalize_and_canonicalize_path(path)
     }
 
-    fn init_dirs(paths: Vec<PathBuf>, cda: bool) -> Vec<PathBuf> {
-        paths.into_iter().map(|path| Self::init_dir(path, cda)).collect()
+    fn init_dirs(base_dir: &Path, paths: Vec<PathBuf>, cda: bool) -> Vec<PathBuf> {
+        paths
+            .into_iter()
+            .map(|path| Self::init_dir(base_dir, path, cda))
+            .collect()
     }
 
+    /// Resolve all configurable paths against the current module root.
     fn resolve_paths(self) -> Self {
         let mut cxon = self;
 
         // Create build and output directories if they don't exist
-        cxon.build_dir  = Self::init_dir(cxon.build_dir, true);
-        cxon.output_dir = Self::init_dir(cxon.output_dir, true);
+        let project_dir = cxon.project_dir.clone();
+
+        cxon.build_dir = Self::init_dir(&project_dir, cxon.build_dir, true);
+        cxon.output_dir = Self::init_dir(&project_dir, cxon.output_dir, true);
 
         if let Some(export_path) = &cxon.export_compile_commands_path {
-            cxon.export_compile_commands_path = Some(Self::init_dir(export_path.clone(), true));
+            cxon.export_compile_commands_path =
+                Some(Self::init_dir(&project_dir, export_path.clone(), true));
         }
 
         if let Some(sources) = cxon.sources {
-            cxon.sources = Some(Self::init_dirs(sources, false));
+            cxon.sources = Some(Self::init_dirs(&project_dir, sources, false));
         }
         if let Some(includes) = cxon.include {
-            cxon.include = Some(Self::init_dirs(includes, false));
+            cxon.include = Some(Self::init_dirs(&project_dir, includes, false));
         }
         if let Some(links) = cxon.link {
-            cxon.link    = Some(Self::init_dirs(links, false));
+            cxon.link = Some(Self::init_dirs(&project_dir, links, false));
         }
-    
+
         cxon
     }
 
@@ -169,10 +222,13 @@ impl CxonConfig {
 
     pub fn get_toolchain(&self) -> ToolChain {
         match self.toolchain.to_lowercase().as_str() {
-            "gnu"  => ToolChain::GNU(),
+            "gnu" => ToolChain::GNU(),
             "llvm" => ToolChain::LLVM(),
             "msvc" => ToolChain::MSVC(),
-            _ => panic!("Unsupported toolchain: {}. Supported toolchains are: gnu, llvm, msvc", self.toolchain),
+            _ => panic!(
+                "Unsupported toolchain: {}. Supported toolchains are: gnu, llvm, msvc",
+                self.toolchain
+            ),
         }
     }
 
@@ -230,7 +286,11 @@ impl CxonConfig {
         };
 
         for include_dir in include_dirs {
-            args.push(format!("{}{}", T::INCLUDE_FLAG_PREFIX, include_dir.to_str().unwrap().to_string()));
+            args.push(format!(
+                "{}{}",
+                T::INCLUDE_FLAG_PREFIX,
+                include_dir.to_str().unwrap().to_string()
+            ));
         }
 
         args
@@ -243,7 +303,11 @@ impl CxonConfig {
         };
 
         for link_dir in link_dirs {
-            args.push(format!("{}{}", T::LINK_DIR_FLAG_PREFIX, link_dir.to_str().unwrap().to_string()));
+            args.push(format!(
+                "{}{}",
+                T::LINK_DIR_FLAG_PREFIX,
+                link_dir.to_str().unwrap().to_string()
+            ));
         }
 
         args
@@ -285,6 +349,6 @@ fn default_debug_flag() -> bool {
 
 #[test]
 fn test_cxon() {
-    let config = CxonConfig::new("./cxon.json".as_ref());
+    let config = CxonConfig::from_path("./cxon.json".as_ref());
     println!("Project: {:?}", config);
 }
