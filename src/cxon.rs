@@ -24,6 +24,7 @@ pub enum ModuleRef {
 }
 
 impl ModuleRef {
+    /// Get normalized path field regardless of short/extended syntax.
     pub fn path(&self) -> &str {
         match self {
             ModuleRef::Path(path) => path,
@@ -38,6 +39,12 @@ pub struct CxonConfig {
     /// Filled at runtime, not read from JSON.
     #[serde(skip)]
     pub project_dir: PathBuf,
+    #[serde(skip)]
+    /// Runtime-only linker inputs injected from dependency module artifacts.
+    ///
+    /// This field is not part of `cxon.json` and is populated by the build
+    /// executor while wiring module dependencies.
+    extra_link_files: Vec<PathBuf>,
     pub project: String,
 
     // build settings
@@ -324,6 +331,37 @@ impl CxonConfig {
         }
 
         args
+    }
+
+    pub fn get_link_dirs_mut(&mut self) -> &mut Vec<PathBuf> {
+        self.link.get_or_insert_with(Vec::new)
+    }
+
+    /// Mutable access to raw library names (`-l<name>` semantics).
+    pub fn get_libs_mut(&mut self) -> &mut Vec<String> {
+        self.libs.get_or_insert_with(Vec::new)
+    }
+
+    /// Register direct link file path contributed by dependency artifact.
+    ///
+    /// The path should be an existing artifact (for example `.a`, `.so`, `.obj`).
+    pub fn add_extra_link_file(&mut self, path: PathBuf) {
+        if !self.extra_link_files.contains(&path) {
+            self.extra_link_files.push(path);
+        }
+    }
+
+    /// Clear runtime-injected link files before repopulating dependency inputs.
+    pub fn clear_extra_link_files(&mut self) {
+        self.extra_link_files.clear();
+    }
+
+    /// Convert extra link file paths to linker CLI args.
+    pub fn get_extra_link_file_args(&self) -> Vec<String> {
+        self.extra_link_files
+            .iter()
+            .map(|path| path.to_string_lossy().to_string())
+            .collect()
     }
 }
 

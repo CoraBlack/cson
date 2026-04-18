@@ -4,7 +4,9 @@ use std::time::SystemTime;
 
 #[derive(Clone)]
 pub struct Object {
+    /// Path to generated object file.
     pub path: std::path::PathBuf,
+    /// Last known modification time used by incremental checks.
     pub modified: Option<SystemTime>,
 }
 

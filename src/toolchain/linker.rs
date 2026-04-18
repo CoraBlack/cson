@@ -16,6 +16,8 @@ struct LinkArgs {
 
     pub output_flag: String,
     pub other_flags: Vec<String>,
+    /// Runtime-injected dependency artifact files passed directly to linker.
+    pub extra_link_files: Vec<String>,
     pub link_dir_args: Vec<String>,
     pub link_lib_args: Vec<String>,
 }
@@ -44,6 +46,7 @@ pub fn link<T: ToolChainTrait>(
                 linker: T::EXECUTABLE_LINKER.to_string(),
                 output_path,
                 output_flag: T::EXECUTABLE_OUTPUT_FLAG.to_string(),
+                extra_link_files: cxon.get_extra_link_file_args(),
                 link_dir_args: cxon.get_link_dir_args::<T>(),
                 link_lib_args: cxon.get_lib_args::<T>(),
                 other_flags,
@@ -55,6 +58,7 @@ pub fn link<T: ToolChainTrait>(
                 linker: T::STATIC_LIB_LINKER.to_string(),
                 output_path,
                 output_flag: T::STATIC_LIB_OUTPUT_FLAG.to_string(),
+                extra_link_files: cxon.get_extra_link_file_args(),
                 link_dir_args: cxon.get_link_dir_args::<T>(),
                 link_lib_args: cxon.get_lib_args::<T>(),
                 other_flags,
@@ -66,6 +70,7 @@ pub fn link<T: ToolChainTrait>(
                 linker: T::SHARED_LIB_LINKER.to_string(),
                 output_path,
                 output_flag: T::SHARED_LIB_OUTPUT_FLAG.to_string(),
+                extra_link_files: cxon.get_extra_link_file_args(),
                 link_dir_args: cxon.get_link_dir_args::<T>(),
                 link_lib_args: cxon.get_lib_args::<T>(),
                 other_flags,
@@ -77,6 +82,7 @@ pub fn link<T: ToolChainTrait>(
                 linker: T::OBJECT_LIB_LINKER.to_string(),
                 output_path,
                 output_flag: T::OBJECT_LIB_OUTPUT_FLAG.to_string(),
+                extra_link_files: cxon.get_extra_link_file_args(),
                 link_dir_args: cxon.get_link_dir_args::<T>(),
                 link_lib_args: cxon.get_lib_args::<T>(),
                 other_flags,
@@ -85,8 +91,9 @@ pub fn link<T: ToolChainTrait>(
     }
 }
 
+/// Link objects into an executable target.
 fn link_to_executable_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
-    std::process::Command::new(args.linker)
+    let status = std::process::Command::new(args.linker)
         .args(input.to_args())
         .arg(args.output_flag)
         .arg(
@@ -95,6 +102,7 @@ fn link_to_executable_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
                 .to_str()
                 .unwrap(),
         )
+        .args(args.extra_link_files)
         .args(args.link_dir_args)
         .args(args.link_lib_args)
         .args(args.other_flags)
@@ -106,10 +114,18 @@ fn link_to_executable_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
             )
             .as_str(),
         );
+
+    if !status.success() {
+        panic!(
+            "Failed to link executable {}",
+            args.output_path.to_string_lossy()
+        );
+    }
 }
 
+/// Archive or link objects into a static library target.
 fn link_to_static_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
-    std::process::Command::new(args.linker)
+    let status = std::process::Command::new(args.linker)
         .args(args.output_flag.split(' '))
         .arg(
             args.output_path
@@ -117,6 +133,7 @@ fn link_to_static_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
                 .to_str()
                 .unwrap(),
         )
+        .args(args.extra_link_files)
         .args(input.to_args())
         .args(args.link_dir_args)
         .args(args.link_lib_args)
@@ -129,10 +146,18 @@ fn link_to_static_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
             )
             .as_str(),
         );
+
+    if !status.success() {
+        panic!(
+            "Failed to link static library {}",
+            args.output_path.to_string_lossy()
+        );
+    }
 }
 
+/// Link objects into a shared library target.
 fn link_to_shared_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
-    std::process::Command::new(args.linker)
+    let status = std::process::Command::new(args.linker)
         .args(args.output_flag.split(' '))
         .arg(
             args.output_path
@@ -140,6 +165,7 @@ fn link_to_shared_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
                 .to_str()
                 .unwrap(),
         )
+        .args(args.extra_link_files)
         .args(input.to_args())
         .args(args.link_dir_args)
         .args(args.link_lib_args)
@@ -152,10 +178,18 @@ fn link_to_shared_lib_cmd<T: ToolChainTrait>(input: ObjectCollection, args: Link
             )
             .as_str(),
         );
+
+    if !status.success() {
+        panic!(
+            "Failed to link shared library {}",
+            args.output_path.to_string_lossy()
+        );
+    }
 }
 
+/// Link objects into an object-library-like output target.
 fn link_to_object_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs) -> () {
-    std::process::Command::new(args.linker)
+    let status = std::process::Command::new(args.linker)
         .args(input.to_args())
         .args(args.output_flag.split(' '))
         .arg(
@@ -164,6 +198,7 @@ fn link_to_object_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs
                 .to_str()
                 .unwrap(),
         )
+        .args(args.extra_link_files)
         .args(args.link_dir_args)
         .args(args.link_lib_args)
         .args(args.other_flags)
@@ -175,4 +210,11 @@ fn link_to_object_cmd<T: ToolChainTrait>(input: ObjectCollection, args: LinkArgs
             )
             .as_str(),
         );
+
+    if !status.success() {
+        panic!(
+            "Failed to link object file {}",
+            args.output_path.to_string_lossy()
+        );
+    }
 }

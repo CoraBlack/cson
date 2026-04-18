@@ -11,12 +11,15 @@ pub mod linker;
 pub mod llvm;
 pub mod msvc;
 
+/// Supported toolchain families.
 pub enum ToolChain {
     GNU(),
     LLVM(),
     MSVC(),
 }
 
+/// Supported build output kinds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TargetType {
     ObjectLib,
     Executable,
