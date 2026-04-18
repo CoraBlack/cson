@@ -33,8 +33,7 @@ the schema service is deployed [here](https://github.com/CoraBlack/cxon_schema/t
 - [x] Mutiple build target type.
 - [x] cxon.json schema support 
 - [x] Export compile_commands.json
-- [ ] Debug field support(Only debug currently).
-- [ ] Submodule support.
+- [x] Submodule support.
 - [ ] Multiple compile targets.
 - [ ] Platform-specific configuration.
 
@@ -51,6 +50,10 @@ We only require a small number of essential fields for cxon.json and make the bu
     "target_type": "execuable", // (Required) build type (execuable, static_lib, shared_lib, object_lib)
     "build_dir": "build",       // the directory storing intermediate compiled product
     "output_dir": "bin",        // the directory storing final compiled product
+    "modules": [                // other module(will be linked automatically in parent cxon project)
+        "module_a",
+        "module_b"
+    ],
 
     "toolchain": "gnu",         // (unsupport) gnu, llvm, msvc only currently
     "cc": "",                   // (unsupport) custom c compiler
