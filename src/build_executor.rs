@@ -81,6 +81,11 @@ fn build_with_toolchain<T: ToolChainTrait>(
     inject_dependency_artifacts(&mut cxon, dep_artifacts);
     let target_type = cxon.get_target_type();
 
+    std::fs::create_dir_all(&cxon.build_dir)
+        .expect(format!("Failed to create build dir {}", cxon.build_dir.display()).as_str());
+    std::fs::create_dir_all(&cxon.output_dir)
+        .expect(format!("Failed to create output dir {}", cxon.output_dir.display()).as_str());
+
     let sources = cxon.sources.clone().unwrap_or_default();
     let sources = Arc::new(Mutex::new(VecDeque::from(sources)));
 

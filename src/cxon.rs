@@ -14,6 +14,17 @@ use serde::{Deserialize, Serialize};
 use crate::toolchain::{TargetType, ToolChain, ToolChainTrait};
 use crate::utils;
 
+/// Behavior when resolving directory paths.
+#[derive(Clone, Copy)]
+enum InitDirMode {
+    /// Directory must already exist.
+    RequireExists,
+    /// Create directory if missing.
+    CreateIfMissing,
+    /// Resolve path but do not create when missing.
+    ResolveOnly,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum ModuleRef {
@@ -157,9 +168,7 @@ impl CxonConfig {
     }
 
     /// Initialize and normalize a path.
-    ///
-    /// `cda` means "create directory automatically" when missing.
-    fn init_dir(base_dir: &Path, path: PathBuf, cda: bool) -> PathBuf {
+    fn init_dir(base_dir: &Path, path: PathBuf, mode: InitDirMode) -> PathBuf {
         let path = if !path.is_absolute() {
             base_dir.join(path)
         } else {
@@ -167,21 +176,27 @@ impl CxonConfig {
         };
 
         if !path.exists() {
-            if !cda {
-                panic!("Directory {} does not exist", path.to_string_lossy());
+            match mode {
+                InitDirMode::RequireExists => {
+                    panic!("Directory {} does not exist", path.to_string_lossy());
+                }
+                InitDirMode::CreateIfMissing => {
+                    fs::create_dir_all(&path)
+                        .expect(format!("Failed to create {}", path.to_string_lossy()).as_str());
+                }
+                InitDirMode::ResolveOnly => {
+                    return path;
+                }
             }
-
-            fs::create_dir_all(&path)
-                .expect(format!("Failed to create {}", path.to_string_lossy()).as_str());
         }
 
         utils::normalize_and_canonicalize_path(path)
     }
 
-    fn init_dirs(base_dir: &Path, paths: Vec<PathBuf>, cda: bool) -> Vec<PathBuf> {
+    fn init_dirs(base_dir: &Path, paths: Vec<PathBuf>, mode: InitDirMode) -> Vec<PathBuf> {
         paths
             .into_iter()
-            .map(|path| Self::init_dir(base_dir, path, cda))
+            .map(|path| Self::init_dir(base_dir, path, mode))
             .collect()
     }
 
@@ -189,25 +204,40 @@ impl CxonConfig {
     fn resolve_paths(self) -> Self {
         let mut cxon = self;
 
-        // Create build and output directories if they don't exist
+        // Build/output paths are resolved here but created later during actual build.
         let project_dir = cxon.project_dir.clone();
 
-        cxon.build_dir = Self::init_dir(&project_dir, cxon.build_dir, true);
-        cxon.output_dir = Self::init_dir(&project_dir, cxon.output_dir, true);
+        cxon.build_dir = Self::init_dir(&project_dir, cxon.build_dir, InitDirMode::ResolveOnly);
+        cxon.output_dir = Self::init_dir(&project_dir, cxon.output_dir, InitDirMode::ResolveOnly);
 
         if let Some(export_path) = &cxon.export_compile_commands_path {
-            cxon.export_compile_commands_path =
-                Some(Self::init_dir(&project_dir, export_path.clone(), true));
+            cxon.export_compile_commands_path = Some(Self::init_dir(
+                &project_dir,
+                export_path.clone(),
+                InitDirMode::CreateIfMissing,
+            ));
         }
 
         if let Some(sources) = cxon.sources {
-            cxon.sources = Some(Self::init_dirs(&project_dir, sources, false));
+            cxon.sources = Some(Self::init_dirs(
+                &project_dir,
+                sources,
+                InitDirMode::RequireExists,
+            ));
         }
         if let Some(includes) = cxon.include {
-            cxon.include = Some(Self::init_dirs(&project_dir, includes, false));
+            cxon.include = Some(Self::init_dirs(
+                &project_dir,
+                includes,
+                InitDirMode::RequireExists,
+            ));
         }
         if let Some(links) = cxon.link {
-            cxon.link = Some(Self::init_dirs(&project_dir, links, false));
+            cxon.link = Some(Self::init_dirs(
+                &project_dir,
+                links,
+                InitDirMode::RequireExists,
+            ));
         }
 
         cxon
