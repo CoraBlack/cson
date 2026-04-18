@@ -33,12 +33,7 @@ pub fn link<T: ToolChainTrait>(
     let target_name = &cxon.get_target_name();
     let output_path = output_dir.join(PathBuf::from(target_name));
 
-    let mut other_flags = Vec::new();
-
-    // debug flag
-    if cxon.get_debug_flag() {
-        other_flags.push(T::DEBUG_FLAG.to_string());
-    }
+    let other_flags = Vec::new();
 
     match target_type {
         TargetType::Executable => link_to_executable_cmd::<T>(

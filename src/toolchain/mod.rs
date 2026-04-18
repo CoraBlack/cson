@@ -30,7 +30,6 @@ pub enum TargetType {
 pub trait ToolChainTrait {
     const CC: &'static str;
     const CXX: &'static str;
-    const DEBUG_FLAG: &'static str;
 
     const EXECUTABLE_LINKER: &'static str;
     const STATIC_LIB_LINKER: &'static str;

@@ -61,16 +61,11 @@ pub fn compile<T: ToolChainTrait>(src: Source, cxon: &CxonConfig) -> Object {
     };
 
     // get compiler flags
-    let mut flags = if is_c_file {
+    let flags = if is_c_file {
         cxon.get_cflags()
     } else {
         cxon.get_cxxflags()
     };
-
-    // get debug flag
-    if cxon.get_debug_flag() {
-        flags.push(T::DEBUG_FLAG.to_string());
-    }
 
     compile_handler::<T>(CompileFuncArgs {
         src_path: src.get_path().to_path_buf(),

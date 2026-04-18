@@ -10,7 +10,6 @@ pub struct LLVM {
 impl ToolChainTrait for LLVM {
     const CC: &'static str = "clang";
     const CXX: &'static str = "clang++";
-    const DEBUG_FLAG: &'static str = "-g";
 
     const EXECUTABLE_LINKER: &'static str = "clang++";
     // #[cfg(windows)]

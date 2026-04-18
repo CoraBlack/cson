@@ -10,7 +10,6 @@ pub struct MSVC {
 impl ToolChainTrait for MSVC {
     const CC: &'static str = "cl";
     const CXX: &'static str = "cl";
-    const DEBUG_FLAG: &'static str = "/Zi";
 
     const EXECUTABLE_LINKER: &'static str = "cl";
     const STATIC_LIB_LINKER: &'static str = "lib";

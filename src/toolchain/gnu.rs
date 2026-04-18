@@ -10,7 +10,6 @@ pub struct GNU {
 impl ToolChainTrait for GNU {
     const CC: &'static str = "gcc";
     const CXX: &'static str = "g++";
-    const DEBUG_FLAG: &'static str = "-g";
 
     const EXECUTABLE_LINKER: &'static str = "g++";
     const STATIC_LIB_LINKER: &'static str = "ar";
